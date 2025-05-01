@@ -23,7 +23,7 @@ This repository contains code and tools for running EEG analysis using **Morgoth
 
 Before running the code, please download the pretrained model (checkpoints) and test dataset (test_data) from Dropbox and place them in the appropriate folders:
 
-- [Download Link – Model and Data](https://www.dropbox.com/) 
+- [Download Link – Model and Data](https://www.dropbox.com/scl/fo/6sb9kjeqcf0qr9ul399bt/AMBXz3vgkMrxS38tNyjapjc?rlkey=386p1uphrmewggutb8oup3pb5&st=kx1szipb&dl=0) 
 
 ## ⚙️ Setup
 
@@ -103,6 +103,41 @@ bash bash EEG_level_cpu.sh
 ```bash
 EEG_level_windows_cpu.bat
 ```
+
+## 🏋️‍♂️ Train a Model from Scratch
+
+To train a Morgoth model from scratch using your own data:
+
+### 1. Prepare your dataset in `.h5` for pretraining and `.pkl` for fine tuning 
+
+You should modify the data_provider.py script according to your dataset
+
+```bash
+echo password | sudo -S ~/miniconda3/envs/torchenv/bin/python data_provider.py
+```
+
+### 2. Run the pretraining script:
+
+```bash
+bash pretrain.sh
+```
+
+### 3. Run the fine-tuning script for event-level:
+
+```bash
+bash train_classification.sh
+```
+
+### 4. Run the fine-tuning script for EEG-level:
+
+```bash
+bash train_EEG_level_head.sh
+```
+
+You may modify the script or config file to set the number of epochs, learning rate, batch size, model type, etc.
+
+Make sure you have sufficient GPU memory for large models or long EEG recordings.
+
 
 
 
