@@ -16,34 +16,31 @@ import sys
 import numpy as np
 import random
 
-class Logger:
+import warnings
+warnings.filterwarnings("ignore")
 
+class Logger:
     def __init__(self, file_path):
-        self.terminal = sys.stdout  # 保存终端默认输出
-        self.log = open(file_path, "a")  # 打开日志文件（追加模式）
+        self.terminal = sys.stdout
+        self.log = open(file_path, "a")
 
     def write(self, message):
-
         self.terminal.write(message)
         self.log.write(message)
 
     def flush(self):
-
         self.terminal.flush()
         self.log.flush()
 
     def log_only(self, message):
-
         self.log.write(message + "\n")
-        self.log.flush()  # 立即刷新
+        self.log.flush()
 
     def print_only(self, message):
-
         self.terminal.write(message + "\n")
         self.terminal.flush()
 
 def setup_logger(output_dir, filename="training_log.txt"):
-
     log_path = os.path.join(output_dir, filename)
     sys.stdout = Logger(log_path)
     return sys.stdout
@@ -90,20 +87,17 @@ class ClipAndExtend:
         return X
 
     def get_random_matrix(self, n, m):
-
         matrix = np.zeros((n, m), dtype=np.float32)
         for i in range(n):
             if m == 1:
-              row = np.random.uniform(0, 0.5, size=(1,)).astype(np.float32)
+                row = np.random.uniform(0, 0.5, size=(1,)).astype(np.float32)
 
             else:
                 a_i1 = np.random.uniform(0.5, 1)
-
                 rest = np.random.uniform(0, 1 - a_i1, m - 1)
 
                 row = np.concatenate(([a_i1], rest))
                 row = row / np.sum(row)
-
 
             matrix[i] = row.astype(np.float32)
 
@@ -134,9 +128,9 @@ class CSVDataset(Dataset):
             df = df.drop(columns=['pred_class'])
 
         if df.isna().any().any():
-            # num_nan_rows = df.isna().any(axis=1).sum()
+            ###########for over GPU memory, could change###########
             df = df.fillna(1)
-
+            ###########for over GPU memory, could change###########
 
         X = df.values.astype('float32')
 
@@ -327,9 +321,11 @@ class CNNTransformerClassifier(nn.Module):
             padding_mask = self.create_padding_mask(lengths, x.size(1))
             padding_mask = padding_mask.to(x.device)
 
+            # 尝试最基本的调用方式
             try:
                 x = self.transformer(x, src_key_padding_mask=padding_mask)
             except TypeError:
+                # 如果上面的调用失败，尝试另一种常见参数形式
                 x = self.transformer(x, mask=None, src_key_padding_mask=padding_mask)
         else:
             x = self.transformer(x)
@@ -503,6 +499,7 @@ def test(n_classes, model, device, test_loader, result_dir, type, n_files, save_
 
             if len(batch_data) == 5:
                 inputs, y, csv_file, lengths, is_low_signals = batch_data
+                # 处理低信号样本
                 low_signal_indices = torch.where(is_low_signals)[0]
                 if len(low_signal_indices) > 0:
                     for idx in low_signal_indices:
@@ -592,6 +589,7 @@ def predict(args, input_dim,n_classes, class_idx, model, device, test_loader, re
 
             if check_signal and len(batch_data) == 5:
                 inputs, y, csv_file, lengths, is_low_signals = batch_data
+                # 处理低信号样本
                 low_signal_indices = torch.where(is_low_signals)[0]
                 if len(low_signal_indices) > 0:
                     for idx in low_signal_indices:
@@ -630,14 +628,12 @@ def predict(args, input_dim,n_classes, class_idx, model, device, test_loader, re
             if n_classes == 1:
                 probabilities = torch.sigmoid(outputs)
                 predicted = torch.round(probabilities).squeeze()
-
                 if not isinstance(predicted, torch.Tensor) or predicted.dim() == 0:
                     predicted = predicted.view(1)
                     probabilities = probabilities.view(1)
             else:
                 probabilities = torch.softmax(outputs, dim=1)
                 predicted = torch.argmax(probabilities, dim=1)
-
 
             for i in range(len(csv_file)):
                 prob_val = probabilities[i].item() if isinstance(probabilities[i], torch.Tensor) else probabilities[i]
@@ -740,7 +736,7 @@ def predict(args, input_dim,n_classes, class_idx, model, device, test_loader, re
     file_path = os.path.join(result_dir, f'pred_EEG_level_{type}.csv')
     results_df.to_csv(file_path, index=False)
     os.chmod(file_path, 0o777)
-    print(f'results saved to {file_path}')
+    print(f'EEG level results are saved to {file_path}')
 
 
 def spikes_results_align(df_a, df_b):
@@ -751,6 +747,7 @@ def spikes_results_align(df_a, df_b):
         if missing_columns:
             return False,False
 
+    # 确保file_name列的类型一致
     df_a['file_name'] = df_a['file_name'].astype(str)
     df_b['file_name'] = df_b['file_name'].astype(str)
 
@@ -828,10 +825,8 @@ def predict_based_10min(args,input_dim, n_classes, class_idx, model, device, tes
                 print('None inputs, skip')
                 continue
 
-            # 检查是否有低信号标志（第5个元素）
             if check_signal and len(batch_data) == 5:
                 inputs, y, csv_file, lengths, is_low_signals = batch_data
-                # 处理低信号样本
                 low_signal_indices = torch.where(is_low_signals)[0]
                 if len(low_signal_indices) > 0:
                     for idx in low_signal_indices:
@@ -848,12 +843,10 @@ def predict_based_10min(args,input_dim, n_classes, class_idx, model, device, tes
                             'pred_class': 0,
                         })
 
-                # 只处理非低信号样本
                 if check_signal and torch.all(is_low_signals):
                     progress_bar.update(len(csv_file))
                     continue
 
-                # 过滤出非低信号样本
                 non_low_indices = torch.where(~is_low_signals)[0]
                 inputs = inputs[non_low_indices]
                 if y is not None:
@@ -865,7 +858,6 @@ def predict_based_10min(args,input_dim, n_classes, class_idx, model, device, tes
 
             if inputs.size(0) == 0:
                 continue
-
 
             file_results = {}
             for name in csv_file:
@@ -891,7 +883,6 @@ def predict_based_10min(args,input_dim, n_classes, class_idx, model, device, tes
                         'high_positive_proportion': 0,
                         'sequence_length': 0,
                     }
-
 
             all_sub_samples = []
             sub_sample_lengths = []
@@ -930,9 +921,7 @@ def predict_based_10min(args,input_dim, n_classes, class_idx, model, device, tes
                     file_results[file_name]['positive_proportion'] = count / total
                     #file_results[file_name]['high_positive_proportion'] = count_2 / count
 
-
                 if input_sample.dim() == 1:
-
                     input_sample = input_sample.unsqueeze(1)
                     num_rows = input_sample.shape[0]
 
@@ -955,7 +944,7 @@ def predict_based_10min(args,input_dim, n_classes, class_idx, model, device, tes
                         sub_sample_file_names.append(file_name)
                         sub_positive_proportion.append(sub_count/sub_sample_length)
                     else:
-                        print(f"Skip samples with length {sub_input.shape}")
+                        print(f"Warning：skip subsample with shape {sub_input.shape}")
 
                 if last_segment_length >= min_sample_length:
                     start_row = num_full_segments * sub_sample_length
@@ -976,18 +965,19 @@ def predict_based_10min(args,input_dim, n_classes, class_idx, model, device, tes
                             padded_sub_input[row_idx] = mean_values
 
                         all_sub_samples.append(padded_sub_input)
-                        sub_sample_lengths.append(last_segment_length)  # 记录原始长度
+                        sub_sample_lengths.append(last_segment_length)
                         sub_sample_file_indices.append(i)
                         sub_sample_file_names.append(file_name)
                         sub_positive_proportion.append(sub_count/sub_sample_length)
                     else:
-                        print(f"Skip samples with length {sub_input.shape}")
+                        print(f"Warning：skip subsample with shape {sub_input.shape}")
 
             if len(all_sub_samples) == 0:
-                print("No valid subsamples")
+                print("Warning：no valid subsample")
                 progress_bar.update(len(csv_file))
                 continue
 
+            # 批量处理子样本
             for batch_start in range(0, len(all_sub_samples), batch_size):
                 batch_end = min(batch_start + batch_size, len(all_sub_samples))
                 batch_samples = all_sub_samples[batch_start:batch_end]
@@ -1009,11 +999,9 @@ def predict_based_10min(args,input_dim, n_classes, class_idx, model, device, tes
                         if n_classes == 1:
                             sub_prob = torch.sigmoid(batch_outputs[k]).item()
                             sub_confidence=min(1,positive_proportion_+sub_prob)
-                            # 更新最大概率
                             if sub_confidence > file_results[file_name]['max_confidence']:
                                 file_results[file_name]['max_confidence'] = sub_confidence
                                 file_results[file_name]['max_prob'] = sub_prob
-
                             # if sub_prob > 0.5:
                             #     file_results[file_name]['positive_segments'] += 1
 
@@ -1029,19 +1017,16 @@ def predict_based_10min(args,input_dim, n_classes, class_idx, model, device, tes
                             file_results[file_name]['class_counts'][pred_class] += 1
 
                 except Exception as e:
-                    print(f"Wrong batch：{e}")
-                    # 打印形状信息以进行调试
+                    print(f"Error occurred while processing batch：{e}")
                     shapes = [sample.shape for sample in batch_samples]
-                    print(f"Batch shape：{shapes}")
+                    print(f"The shape of the batch：{shapes}")
                     continue
-
 
             for file_name, res in file_results.items():
                 if res['total_segments'] == 0:
                     continue
 
                 if n_classes == 1:
-
                     max_prob = res['max_prob']
                     max_confidence= res['max_confidence']
 
@@ -1172,7 +1157,7 @@ def predict_based_10min(args,input_dim, n_classes, class_idx, model, device, tes
     file_path = os.path.join(result_dir, f'pred_EEG_level_{type}.csv')
     results_df.to_csv(file_path, index=False)
     os.chmod(file_path, 0o777)
-    print(f'results saved to {file_path}')
+    print(f'EEG level results are saved to {file_path}')
 
 
 def load_model(args):
@@ -1186,16 +1171,17 @@ def load_model(args):
 
 
 
+
 def load_model_parameters(model,model_parameters_path):
     model.load_state_dict(torch.load(model_parameters_path,weights_only=True)['model_state_dict'])
     return model
+
 
 
 def summarize_sleep_eeg_level_results(dataset_type,train_csv_dirs,result_dir,event_step=1):
     def check_all_consecutive_labels(series):
         consecutive_counts = {0:0, 1: 0, 2: 0, 3: 0, 4: 0}
         has_consecutive = {0:False, 1: False, 2: False, 3: False, 4: False}
-
         thresholds = {0: int(30 - 10 / event_step), 1: int(30 - 10 / event_step), 2: int(30 - 10 / event_step), 3: int(30 - 10 / event_step),
                       4: int(30 - 10 / event_step)}
 
@@ -1245,6 +1231,7 @@ def summarize_sleep_eeg_level_results(dataset_type,train_csv_dirs,result_dir,eve
             file_name=file.split('.')[0]
             event_level_results_df=pd.read_csv(os.path.join(dir,file))
 
+            #小于1min 就不看连续
             if len(event_level_results_df) <= 10*60/event_step:
                 if 'class_3_prob' in  event_level_results_df.columns and  'pred_4_class' in  event_level_results_df.columns:
                     new_row = pd.DataFrame({

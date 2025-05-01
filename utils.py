@@ -11,6 +11,7 @@ from pathlib import Path
 import argparse
 import torch
 import mne
+from attr.validators import max_len
 from mne import create_info
 mne.set_log_level("ERROR")
 import re
@@ -615,8 +616,7 @@ def init_distributed_mode(args):
 
     torch.cuda.set_device(args.gpu)
     args.dist_backend = 'nccl'
-    print('| distributed init (rank {}): {}, gpu {}'.format(
-        args.rank, args.dist_url, args.gpu), flush=True)
+    # print('| distributed init (rank {}): {}, gpu {}'.format(args.rank, args.dist_url, args.gpu), flush=True)
     torch.distributed.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                          world_size=args.world_size, rank=args.rank)
     torch.distributed.barrier()
@@ -863,7 +863,7 @@ def auto_load_model(args, model, model_without_ddp, optimizer, loss_scaler, mode
 def load_from_task_model(args, model_without_ddp,):
     checkpoint = torch.load(args.task_model, map_location='cpu',weights_only=False)
     model_without_ddp.load_state_dict(checkpoint['model'],strict=False)  # strict: bool=True, , strict=False
-    print("Resume checkpoint %s" % args.resume)
+    #print("Resume checkpoint %s" % args.resume)
 
 
 def create_ds_config(args):
@@ -1129,7 +1129,7 @@ def spikes_results_from_1s_to_10s(predictions,data_fs, original_result_step,orig
         filtered_values = results_1s[results_1s >= 0.5]
 
         if len(filtered_values) > data_fs/4/original_result_step: # 0.25s
-            avg_value = filtered_values.mean()  # 计算符合条件的均值
+            avg_value = filtered_values.mean()
         else:
             avg_value = results_1s.mean()
 
@@ -1179,31 +1179,12 @@ def continuous_binary_probabilities(predictions, data_fs, result_step,smooth_met
         return smoothed_data
 
     return smoothed_data
-#
-# def continuous_binary_probabilities2(predictions, data_fs, result_step):
-#     i = 0
-#     n=len(predictions)
-#     continuous_size=int(data_fs/result_step/4) #1/4 second
-#     while i < n:
-#         if predictions[i] < 0.5:
-#             predictions[i]=0
-#             i += 1
-#             continue
-#
-#         start = i
-#         while i < n and predictions[i] >= 0.5:
-#             i += 1
-#         end = i
-#
-#         if end - start <=continuous_size:
-#             for j in range(start, end):
-#                 predictions[j] = max(predictions[j] - 0.5, 0)
-#     return predictions
+
 
 def continuous_binary_probabilities2(predictions, data_fs, result_step):
 
     n = len(predictions)
-    continuous_size = int(data_fs / result_step / 4)
+    continuous_size = int(data_fs / result_step / 4)  # 1/4 秒
 
     keep_indices = [False] * n
 
@@ -1216,7 +1197,6 @@ def continuous_binary_probabilities2(predictions, data_fs, result_step):
         while i < n and predictions[i] >= 0.5:
             i += 1
         end = i
-
         if end - start > continuous_size:
             keep_start = max(start - continuous_size*2, 0)
             keep_end = min(end + continuous_size*2, n)
@@ -1226,7 +1206,7 @@ def continuous_binary_probabilities2(predictions, data_fs, result_step):
 
     for i in range(n):
         if not keep_indices[i]:
-            predictions[i] = max(predictions[i] - 0.5, 0)  # 减去 0.5，确保不小于 0
+            predictions[i] = max(predictions[i] - 0.5, 0)
 
     return predictions
 
@@ -1445,7 +1425,7 @@ class MGBClassLoader(torch.utils.data.Dataset):
         self.root = root
         self.files = files
         # self.default_rate = 200
-        # self.sampling_rate = sampling_rate
+        # self.sampling_rate = sampling_rate # 不需要了，默认在evaluation的时候segment除了normalization才做，都是处理好了
         self.data_format = original_format
         self.Bipolar = Bipolar
         self.addBipolar = addBipolar
@@ -1473,12 +1453,12 @@ class MGBClassLoader(torch.utils.data.Dataset):
                 try:
                     sample = scipy.io.loadmat(path_signal)
                     X = sample['data']
-            ############  In morgoth test mode ############
+            ############ data that was only filtered but not otherwise processed (when running Morgoth on test set)############
                     # X= X[:19,:]
                     # # print(X.shape)
                     # X = EEG_avg(X)
                     # X = EEG_clip(X)
-            ############  In morgoth test mode ############
+            ############  data that was only filtered but not otherwise processed (when running Morgoth on test set)############
                     X = EEG_normalize(X)
                     try:
                         Y = sample['y'].item()
@@ -1490,7 +1470,7 @@ class MGBClassLoader(torch.utils.data.Dataset):
             sample = pickle.load(open(path_signal, "rb"))
             X = sample["X"]
             # X = EEG_avg(X)
-            # X = EEG_clip(X)
+            # X = EEG_clip(X)  # For .pkl data, avg and clip have already been handled in data_provider
             X = EEG_normalize(X)
             Y = sample["y"]
             if Y==-1:
@@ -1532,13 +1512,18 @@ class ContinuousToSnippetDataset(torch.utils.data.Dataset):
                  transform = None,
                  step = 2000,
                  step_in_point = True,
-                 polarity=1):
+                 polarity=1,
+                 leave_one_hemisphere_out=False,
+                 channel_symmetric_flip=False,
+                 max_length_hour=None):
 
         self.type = type
         self.fs = 200
         self.original_avg=False
         self.missing_channels=None
         self.mono_channels=None
+        self.leave_one_hemisphere_out=leave_one_hemisphere_out
+        self.channel_symmetric_flip=channel_symmetric_flip
 
         file_extension = os.path.splitext(path_signal)[1].lower()
         if file_extension == '.mat':
@@ -1573,6 +1558,7 @@ class ContinuousToSnippetDataset(torch.utils.data.Dataset):
                     original_avg=False
 
             else:
+                # order channels 如果原数据不是排好序的，要求mat里提供channel name
                 channels, original_avg = get_channel_names_from_mat(raw)
 
                 data_dic = dict(zip(channels, signal))
@@ -1616,6 +1602,9 @@ class ContinuousToSnippetDataset(torch.utils.data.Dataset):
 
                 signal = np.array(list(data_dic.values()))
 
+            if max_length_hour is not None and signal.shape[1] > int(max_length_hour * 3600 * self_fs):
+                signal = signal[:, :int(max_length_hour * 3600 * self_fs)]
+
             if polarity == -1:
                 signal = signal * -1
 
@@ -1632,7 +1621,7 @@ class ContinuousToSnippetDataset(torch.utils.data.Dataset):
 
             # may have EEG in name initially
             raw.rename_channels(
-                {name: name.replace('EEG', '').replace('eeg', '').strip() for name in raw.info['ch_names']})
+                {name: name.replace('EEG', '').replace('eeg', '').replace('POL', '').replace('pol', '').strip() for name in raw.info['ch_names']})
 
             new_channel_names = {ch_name: ch_name.upper() for ch_name in raw.ch_names}
             raw.rename_channels(new_channel_names)
@@ -1652,7 +1641,15 @@ class ContinuousToSnippetDataset(torch.utils.data.Dataset):
 
             # Remove the reference name in the channel names 如果去除后有重复，就不去除
             # Create a mapping of new channel names
-            new_channel_names = {ch_name: ch_name.split('-')[0] for ch_name in channels}
+
+            # new_channel_names = {ch_name: ch_name.split('-')[0] for ch_name in channels}
+            # new_channel_names = {ch_name: ch_name.split('(')[0] for ch_name in new_channel_names}
+
+            new_channel_names = {
+                ch_name: re.sub(r"\(.*?\)", "", ch_name).split('-')[0].strip()
+                for ch_name in channels
+            }
+
             # Count occurrences of each new channel name
             counter = Counter(new_channel_names.values())
             # Create final mapping: only rename unique channels
@@ -1668,15 +1665,21 @@ class ContinuousToSnippetDataset(torch.utils.data.Dataset):
 
             channels=raw.ch_names
 
+            # sleep必须有6个通道
             if self.type=='SLEEPPSG':
                 if set(channels).issuperset(set(sleep_channels1)):
                     selected_channels = sleep_channels1
                 elif set(channels).issuperset(set(sleep_channels2)):
                     selected_channels = sleep_channels2
                 else:
-                    raise ValueError("EDF file does not contain all channels from either sleep_channels1 or sleep_channels2.")
+                    missing = set(sleep_channels1) - set(channels)
+                    if not missing:
+                        missing = set(sleep_channels2) - set(channels)
+                    raise ValueError(
+                        f"{path_signal} EDF file does not contain all channels from either sleep_channels1 or sleep_channels. Missing {missing}")
 
             else:
+                # Missing channels are allowed and will be padded with zeros.
                 if allow_missing_channels:
                     missing_channels1 = set(eeg_channels1) - set(channels)
                     missing_channels2 = set(eeg_channels2) - set(channels)
@@ -1694,9 +1697,14 @@ class ContinuousToSnippetDataset(torch.utils.data.Dataset):
                     elif set(channels).issuperset(set(eeg_channels2)):
                         selected_channels = eeg_channels2
                     else:
-                        raise ValueError("EDF file does not contain all channels from either eeg_channels1 or eeg_channels2.")
+                        missing = set(eeg_channels1) - set(channels)
+                        if not missing:
+                            missing = set(eeg_channels2) - set(channels)
+                        raise ValueError(f"{path_signal} EDF file does not contain all channels from either eeg_channels1 or eeg_channels2. Missing {missing}")
 
             raw_selected = raw.copy().pick(selected_channels)
+            if max_length_hour is not None and raw_selected.times[-1] >  max_length_hour * 3600:
+                raw_selected.crop(tmin=0, tmax=int(max_length_hour * 3600))
             signal=raw_selected.get_data(units='uV')
 
             ############### for HEP data, should *10 before input the model ################
@@ -1718,7 +1726,7 @@ class ContinuousToSnippetDataset(torch.utils.data.Dataset):
         else:
             raise ValueError("Should be mat or edf or pkl.")
 
-
+        # If the data file includes fs, use it if it differs from the provided parameter
         if self_fs == 0:
             if given_fs != 0:
                 self_fs = given_fs
@@ -1734,6 +1742,7 @@ class ContinuousToSnippetDataset(torch.utils.data.Dataset):
         # signal=same_segment_with_kaggle(signal=signal,fs=self.self_fs,seq_length=30)
         ######## Only test on center n s(compare with non-continuous baselines) ##################
 
+        # index of flat value
         def is_constant(tensor):
             max_values = torch.max(tensor, dim=1).values
             min_values = torch.min(tensor, dim=1).values
@@ -1775,7 +1784,7 @@ class ContinuousToSnippetDataset(torch.utils.data.Dataset):
 
         for snippet_idx in range(num_snippets):
             snippet_data = original_snippets[snippet_idx, :, :]
-            is_valid = 1 # 假设有效
+            is_valid = 1
 
             if torch.any(torch.all(torch.isnan(snippet_data), dim=0)).item():
                 is_valid = 0
@@ -1850,6 +1859,11 @@ class ContinuousToSnippetDataset(torch.utils.data.Dataset):
         # apply transformations: clip and scaling (normalize)
         if self.transform is not None:
             signal = self.transform(signal)
+
+        if self.leave_one_hemisphere_out is not False:
+            signal=leave_one_hemisphere_out_func(data=signal,side=self.leave_one_hemisphere_out)
+        if self.channel_symmetric_flip is not False:
+            signal = channel_symmetric_flip_func(data=signal,side=self.channel_symmetric_flip)
 
         # transfer to torch
         if isinstance(signal, np.ndarray):
@@ -2156,13 +2170,16 @@ def EEG_normalize(eeg_data):
         out_data[i, :] = normalized_channel_data.flatten()
     return out_data
 
-def resample_signal(signal, original_rate, target_rate):
+def resample_signal(signal, original_rate, target_rate, n_jobs=5):
+
     if original_rate == target_rate:
         return signal
-    num_samples = int(signal.shape[1] * (target_rate / original_rate))
-    resampled_signal = np.zeros((signal.shape[0], num_samples))
-    for i in range(signal.shape[0]):
-        resampled_signal[i, :] = resample(signal[i, :], num_samples)
+    # num_samples = int(signal.shape[1] * (target_rate / original_rate))
+    # resampled_signal = np.zeros((signal.shape[0], num_samples))
+    # for i in range(signal.shape[0]):
+    #     resampled_signal[i, :] = resample(signal[i, :], num_samples)
+
+    resampled_signal = mne.filter.resample(signal, down=original_rate, up=target_rate, n_jobs=n_jobs)
     return resampled_signal
 
 
@@ -2293,7 +2310,6 @@ def sort_dict_by_keys(input_dict, key_order, default_value=None, remaining_keys=
 
 
 def remove_nan_columns(data):
-
     nan_columns = np.all(np.isnan(data), axis=0)
 
     n_removed_front_points = 0
@@ -2316,6 +2332,7 @@ def remove_nan_columns(data):
 
 
 def find_valid_segment(data, n, threshold=5000):
+
     num_channels, num_columns = data.shape
 
     if n < 0 or n >= num_columns:
@@ -2344,7 +2361,30 @@ def find_valid_segment(data, n, threshold=5000):
     return new_data, new_n
 
 
+
+def leave_one_hemisphere_out_func(data, side='right'):
+    if side == 'right' or side == 'r':
+        data[-8:, :] = 0
+    elif  side == 'left' or side == 'l':
+        data[:8, :] = 0
+    elif side == 'middle' or side == 'm':
+        data[8:11, :] = 0
+    else:
+        raise ValueError(f'Hemisphere side should be right or left or middle')
+    return data
+
+def channel_symmetric_flip_func(data,side='right'):
+    if side == 'right' or side == 'r':
+        data[:8, :] =  data[-8:, :]
+    elif side == 'left' or side == 'l':
+        data[-8:, :] = data[:8, :]
+    else:
+        raise ValueError(f'Hemisphere side should be right or left')
+    return data
+
+
 def resize_array_along_axis0(arr, d, target_length):
+
     original_length = arr.shape[0]
 
     if target_length == original_length:
@@ -2398,10 +2438,12 @@ def recursive_files(root_dir,file_type):
 def find_file_path(root_dir, target_filename):
     root_path = Path(root_dir)
     for file in root_path.rglob(target_filename):
-        return str(file)
-    return None
+        return str(file)  # 返回完整路径
+    return None  # 如果未找到文件，返回 None
 
 
 def extract_number(filename):
     numbers = re.findall(r'\d+', filename)
     return int(numbers[0]) if numbers else float('inf')
+
+

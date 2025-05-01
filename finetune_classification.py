@@ -8,7 +8,7 @@ import json
 import os
 import pandas as pd
 from pathlib import Path
-
+import torch.distributed as dist
 from sklearn.tests.test_multiclass import n_classes
 from tqdm import tqdm
 from collections import OrderedDict
@@ -30,6 +30,9 @@ import torch.nn.functional as F
 from timm.utils import ModelEma
 import utils
 from einops import rearrange
+
+import warnings
+warnings.filterwarnings("ignore")
 
 def get_args():
     parser = argparse.ArgumentParser('Fine-tuning and evaluation script for EEG classification', add_help=False)
@@ -224,9 +227,21 @@ def get_args():
     parser.add_argument('--test_data_format',  default='pkl', type=str,
                         help='in test, original data format mat | pkl')
 
+    parser.add_argument('--max_length_hour', default='no', type=str,
+                        help='Only analyze the first n hours of data.')
+
     parser.add_argument('--rewrite_results', default='no', type=str,
                         choices=['yes', 'y', 'no', 'n'],
                         help='rewrite reults')
+
+    parser.add_argument('--leave_one_hemisphere_out', default='no', type=str,
+                        choices=['no', 'right', 'left', 'middle'],
+                        help='set right or left or middle hemisphere 0')
+
+    parser.add_argument('--channel_symmetric_flip', default='no', type=str,
+                        choices=['no', 'right', 'left'],
+                        help='symmetrically map the right(left) hemisphere data to the left(right) hemisphere.')
+
 
     # distributed training parameters
     parser.add_argument('--world_size', default=1, type=int,
@@ -645,7 +660,7 @@ def main(args, ds_init):
     if ds_init is not None:
         utils.create_ds_config(args)
 
-    print(args)
+    # print(args)
 
     device = torch.device(args.device)
 
@@ -666,37 +681,56 @@ def main(args, ds_init):
            step_in_point = False
 
 
-        if args.need_spikes_10s_result:
+        if str(args.need_spikes_10s_result).lower()=='y' or str(args.need_spikes_10s_result).lower()=='yes':
+            args.need_spikes_10s_result=True
             if args.spikes_10s_result_slipping_step_second==0:
                 print('Set --need_spikes_10s_result yes, but not set --spikes_10s_result_slipping_step_second or default 10')
                 args.spikes_10s_result_slipping_step_second=10
+        else:
+            args.need_spikes_10s_result=False
 
-
-        if args.already_format_channel_order == 'yes' or args.already_format_channel_order == 'y':
+        if str(args.already_format_channel_order).lower() == 'yes' or str(args.already_format_channel_order).lower() == 'y':
             args.already_format_channel_order = True
         else:
             args.already_format_channel_order = False
 
-        if args.already_average_montage  == 'yes' or args.already_average_montage == 'y':
+        if str(args.already_average_montage).lower()  == 'yes' or str(args.already_average_montage).lower() == 'y':
             args.already_average_montage = True
         else:
             args.already_average_montage = False
 
-        if args.allow_missing_channels  == 'yes' or args.allow_missing_channels == 'y':
+        if str(args.allow_missing_channels).lower()  == 'yes' or str(args.allow_missing_channels).lower() == 'y':
             args.allow_missing_channels = True
         else:
             args.allow_missing_channels = False
+
+        if str(args.leave_one_hemisphere_out).lower()  == 'n' or str(args.leave_one_hemisphere_out).lower() == 'no':
+            args.leave_one_hemisphere_out=False
+        else:
+            args.leave_one_hemisphere_out = str(args.leave_one_hemisphere_out).lower()
+
+        if str(args.channel_symmetric_flip).lower()  == 'n' or str(args.channel_symmetric_flip).lower() == 'no':
+            args.channel_symmetric_flip=False
+        else:
+            args.channel_symmetric_flip = str(args.channel_symmetric_flip).lower()
+
+        if str(args.max_length_hour).lower() == 'n' or str(args.max_length_hour).lower() == 'no':
+            args.max_length_hour = None
+        else:
+            args.max_length_hour = int(args.max_length_hour)
+
 
         args.nb_classes = utils.get_n_classes(args.dataset)
 
         model = get_models(args)
 
         patch_size = model.patch_size  # patch_size 200 (1s)
-        print("Patch size = %s" % str(patch_size))
+        #print("Patch size = %s" % str(patch_size))
         args.window_size = (1, args.input_size // patch_size)
         args.patch_size = patch_size
 
         if args.device == 'cpu':
+            # 将模型强制转换为 float32
             model = model.to(torch.float32)
 
         else:
@@ -705,8 +739,8 @@ def main(args, ds_init):
         model_without_ddp = model
         n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-        print("Model = %s" % str(model_without_ddp))
-        print('number of params:', n_parameters)
+        #print("Model = %s" % str(model_without_ddp))
+        #print('number of params:', n_parameters)
 
         if args.distributed:
             model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu], find_unused_parameters=False)
@@ -733,28 +767,37 @@ def main(args, ds_init):
             file_list = [file.split('.')[0] for file in file_list if file in current_files]
 
         else:
+            # If all the data are stored in one directory
             # file_list=[file.split('.')[0] for file in os.listdir(args.eval_sub_dir) if file.endswith(args.data_format)]
 
+            # If the data are organized in different folders under a root path, use recursive search to find them.
             file_list = utils.recursive_files(root_dir=args.eval_sub_dir, file_type=args.data_format)
             file_list = [file.split('.')[0] for file in file_list]
-
+            # If the files are numbered, sort them based on the numerical values in their names.
             file_list = sorted(file_list, key=utils.extract_number)
 
-        print(f'{len(file_list)} files')
+        print(f'\n ')
+        print(f'[*] For {args.dataset} task')
+        print(f'Input {len(file_list)} EEG files...')
 
-        for eval_file in tqdm(file_list):
+        for eval_file in tqdm(file_list,desc=f"{args.dataset} event level results"):
 
+            ####### Whether overwrite former results #######
             if args.rewrite_results in ['no' , 'n' , 'No' , 'N' , 'NO']:
                 result_file_path = os.path.join(args.eval_results_dir, f'{eval_file}.csv')
                 if os.path.exists(result_file_path):
                     print(f'{result_file_path} already exists, skip')
                     continue
+            ####### Whether overwrite former results#######
 
+
+            # If all the data are stored in one directory
             # data_path = os.path.join(args.eval_sub_dir, f'{eval_file}.{args.data_format}')
             # if not os.path.exists(data_path):
             #     print(f"{data_path} data not found")
             #     continue
 
+            # If the files are numbered, sort them based on the numerical values in their names.
             data_path=utils.find_file_path(root_dir=args.eval_sub_dir, target_filename=f'{eval_file}.{args.data_format}')
 
             if data_path==None:
@@ -781,7 +824,8 @@ def main(args, ds_init):
                                             transform=data_transform,
                                             step=used_slipping_step,
                                             step_in_point=step_in_point,
-                                            polarity=int(args.polarity))
+                                            polarity=int(args.polarity),
+                                            max_length_hour=args.max_length_hour)
 
                     except ValueError as e:
                         print(f"DataError: {e}")
@@ -805,7 +849,6 @@ def main(args, ds_init):
 
                 result_file_path = os.path.join(args.eval_results_dir, f'{eval_file}.csv')
                 df.to_csv(result_file_path, index=False)
-                # 设置文件权限为所有用户都可以删除（读、写、执行权限）
                 os.chmod(result_file_path, 0o777)
 
                 continue
@@ -843,8 +886,11 @@ def main(args, ds_init):
                                     transform=data_transform,
                                     step=used_slipping_step,
                                     step_in_point=step_in_point,
-                                    polarity=int(args.polarity)
-                                                            )
+                                    polarity=int(args.polarity),
+                                    leave_one_hemisphere_out=args.leave_one_hemisphere_out,
+                                    channel_symmetric_flip=args.channel_symmetric_flip,
+                                    max_length_hour=args.max_length_hour
+                                                              )
             except ValueError as e:
                 print(f"DataError: {e}")
                 continue
@@ -885,7 +931,7 @@ def main(args, ds_init):
                                   ch_names=ch_names,
                                   is_binary=(args.nb_classes == 1))
 
-            # 填充结果 valid_index的shape 是需要返回的shape
+            # padding results, valid_index should have the same shape as the output
             valid_index, valid_start_end_indices, result_segment_shapes = EEG_data.get_valid_indices()
 
             if args.nb_classes==1:
@@ -898,6 +944,7 @@ def main(args, ds_init):
                     valid_start_index,valid_end_index=valid_start_end_index
                     valid_result_segment_shape=valid_end_index-valid_start_index+1
 
+                    #Interpolate and extend the result segments to match the length of the returned output
                     new_prob_segment=utils.resize_array_along_axis0(arr=prob_segment, d=1,target_length=valid_result_segment_shape)
 
                     new_result_vector[valid_start_index:valid_end_index+1]=new_prob_segment
@@ -905,7 +952,7 @@ def main(args, ds_init):
                 if args.dataset == 'SPIKES':
                     original_fs = EEG_data.get_original_fs()
 
-                    if args.need_spikes_10s_result.lower() == 'yes'  or args.need_spikes_10s_result.lower()  == 'y':
+                    if args.need_spikes_10s_result:
                         if (step_in_point==True and used_slipping_step/original_fs>1 or (step_in_point==False and used_slipping_step!=1)):
                             print('could not output 10s continuous results for spikes, the step in 1s results should <= 1s')
                         else:
@@ -922,7 +969,6 @@ def main(args, ds_init):
                     if step_in_point:
                         smooth_method = args.smooth_result
                         new_result_vector = utils.continuous_binary_probabilities(predictions=new_result_vector, data_fs=original_fs,result_step=args.prediction_slipping_step, smooth_method=smooth_method) # smooth_method = 'ema' or 'window_ema' or ''
-
                         if args.allow_missing_channels == True:
                             new_result_vector = utils.continuous_binary_probabilities2(
                             predictions=new_result_vector,
@@ -936,16 +982,19 @@ def main(args, ds_init):
                 prob = np.exp(pred) / np.sum(np.exp(pred), axis=1, keepdims=True)
                 prob = np.array(prob)
 
+                #Due to resampling, result_count and valid_count may not be equal.
                 new_shape = (len(valid_index), prob.shape[1])
                 new_result_matrix = np.zeros(new_shape, dtype=prob.dtype)
-                new_result_matrix[..., 0] = 1
+                new_result_matrix[..., 0] = 1 #classify as others
 
+                # Slice the result array
                 prob_segments=utils.split_nd_to_plus1d(arr=prob, segment_shape=result_segment_shapes)
 
                 for valid_start_end_index, prob_segment in zip(valid_start_end_indices, prob_segments):
                     valid_start_index,valid_end_index=valid_start_end_index
                     valid_result_segment_shape=valid_end_index-valid_start_index+1
 
+                    # Interpolate and expand result segments to match the return length
                     new_prob_segment=utils.resize_array_along_axis0(arr=prob_segment, d=2, target_length=valid_result_segment_shape)
 
                     new_result_matrix[valid_start_index:valid_end_index+1,:]=new_prob_segment
@@ -959,17 +1008,20 @@ def main(args, ds_init):
                 df['pred_class'] = df.idxmax(axis=1)
                 df['pred_class'] = df['pred_class'].map(lambda x: int(x.split('_')[1]))
 
-            df = df.fillna(1) # 一些值为1的溢出成了nan
+            df = df.fillna(1)
             file_path=os.path.join(args.eval_results_dir, f'{eval_file}.csv')
             df.to_csv(file_path, index=False)
             os.chmod(file_path, 0o777)
 
+        print(f'Event level results are saved to {args.eval_results_dir}')
+        if dist.is_initialized():
+            dist.destroy_process_group()
         exit(0)
     # predict continuous -------------------------------------------------------------------------
 
-
     # evaluation (test) ------------------------------------------------------------------------------------
     if args.eval:
+        print(args)
         all_items = os.listdir(args.eval_sub_dir)
 
         subdirectories = [os.path.join(args.eval_sub_dir, item) for item in all_items if
@@ -1041,7 +1093,7 @@ def main(args, ds_init):
 
 
                 # Save the modified DataFrame back to the same CSV file
-                df = df.fillna(1)  # 一些值为1的溢出成了nan
+                df = df.fillna(1)
                 df.to_csv(result_file, index=False)
                 os.chmod(result_file, 0o777)
                 print(f"Test results saved to {result_file}")
@@ -1052,12 +1104,16 @@ def main(args, ds_init):
                 print(f"The file {result_file} does not exist.")
             except Exception as e:
                 print(f"An error occurred: {e}")
+
+        if dist.is_initialized():
+            dist.destroy_process_group()
         exit(0)
     # evaluation-------------------------------------------------------------------------------------
 
 
     # train-------------------------------------------------------------------------------------
     # fix the seed for reproducibility
+    print(args)
     seed = args.seed + utils.get_rank()
     torch.manual_seed(seed)  # reproducibility of tensors generated by PyTorch
     np.random.seed(seed)  # reproducibility of NumPy related random operations

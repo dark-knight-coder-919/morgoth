@@ -2,8 +2,8 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from functools import partial
-from timm.models.layers import trunc_normal_
-from timm.models.registry import register_model
+from timm.layers import trunc_normal_
+from timm.models import register_model
 import torch.distributed as distributed
 from einops import rearrange, repeat
 from backbone import NeuralTransformer

@@ -18,9 +18,12 @@
 #--smooth_result ema or window_ema or ''
 #--need_spikes_10s_result yes (summarize 10-second results from 1-second predictions.)
 #--spikes_10s_result_slipping_step_second xx (sliding step in second for 10-second spike detection)
-#--polarity 1 or -1 with default 1 (If set -1, the signal is inverted)
-#--rewrite_results no | yes (Default no Overwrite the original results when new results are available.)
 
+##### More optional parameters:
+#--polarity 1 or -1 with default 1 (If set -1, the signal is inverted)
+#--max_length_hour no or 1,2,3...(Only analyze the first n hours of the EEG)
+#--leave_one_hemisphere_out no or left or right or middel (Set the EEG signals to 0 for the left, right, or middle hemisphere)
+#--rewrite_results no | yes (Default no Overwrite the original results when new results are available.)
 
 password="exxact@1"
 
@@ -36,15 +39,18 @@ echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.r
             --already_format_channel_order no \
             --already_average_montage no \
             --allow_missing_channels no \
+            --max_length_hour no \
+            --leave_one_hemisphere_out no \
+            --polarity 1 \
             --eval_sub_dir test_data/IIIC/segments_raw \
             --eval_results_dir test_data/IIIC/results/pred_1sStep\
             --prediction_slipping_step_second 1 \
-            # --rewrite_results yes
-            # --polarity -1
+            --rewrite_results no
+
 
 
 # 2. SPIKES--------------------------------------------------------------------------
-echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=12346 finetune_classification.py \
+echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
             --abs_pos_emb \
             --model base_patch200_200 \
             --predict \
@@ -55,14 +61,15 @@ echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.r
             --already_format_channel_order no \
             --already_average_montage no \
             --allow_missing_channels no \
+            --max_length_hour no \
+            --leave_one_hemisphere_out no \
+            --polarity 1 \
             --eval_sub_dir test_data/SPIKES/SN2/segments_10min \
             --eval_results_dir test_data/SPIKES/SN2/results/pred_1pStep \
             --prediction_slipping_step 1 \
-            --smooth_result ema \
-            # --rewrite_results yes
-            # --polarity -1
+            --smooth_result ema
 
-echo "$password" |  sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=3 finetune_classification.py \
+echo "$password" |  sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
            --abs_pos_emb \
             --model base_patch200_200 \
             --predict \
@@ -73,18 +80,19 @@ echo "$password" |  sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distribut
             --already_format_channel_order no \
             --already_average_montage no \
             --allow_missing_channels no \
+            --max_length_hour no \
+            --leave_one_hemisphere_out no \
+            --polarity 1 \
             --eval_sub_dir test_data/SPIKES/HEP/edf \
             --eval_results_dir test_data/SPIKES/HEP/results/pred_1pStep \
             --prediction_slipping_step 1 \
             --smooth_result ema \
             --need_spikes_10s_result yes \
-            --spikes_10s_result_slipping_step_second 1 \
-            # --rewrite_results yes
-            # --polarity -1
+            --spikes_10s_result_slipping_step_second 1
 
 
 # 3. Focal/Generalized Spikes--------------------------------------------------------
-echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=12346 finetune_classification.py \
+echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
             --abs_pos_emb \
             --model base_patch200_200 \
             --predict \
@@ -95,15 +103,16 @@ echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.r
             --already_format_channel_order no \
             --already_average_montage yes \
             --allow_missing_channels no \
+            --max_length_hour no \
+            --polarity 1 \
+            --leave_one_hemisphere_out no \
             --eval_sub_dir test_data/MoE_event/mat \
             --eval_results_dir test_data/MoE_event/results/pred_FOCGENSPIKES_1sStep \
-            --prediction_slipping_step_second 1 \
-            # --rewrite_results yes
-            # --polarity -1
+            --prediction_slipping_step_second 1
 
 
 # 4. Slowing--------------------------------------------------------
-echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=12346 finetune_classification.py \
+echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
             --abs_pos_emb \
             --model base_patch200_200 \
             --predict \
@@ -114,15 +123,16 @@ echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.r
             --already_format_channel_order no \
             --already_average_montage yes \
             --allow_missing_channels no \
+            --max_length_hour no \
+            --polarity 1 \
+            --leave_one_hemisphere_out no \
             --eval_sub_dir test_data/SLOWING/segments_10min \
             --eval_results_dir test_data/SLOWING/results/pred_1sStep \
-            --prediction_slipping_step_second 1 \
-            # --rewrite_results yes
-            # --polarity -1
+            --prediction_slipping_step_second 1
 
 
 # 5. BS--------------------------------------------------------
-echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=12346 finetune_classification.py \
+echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
             --abs_pos_emb \
             --model base_patch200_200 \
             --predict \
@@ -133,11 +143,12 @@ echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.r
             --already_format_channel_order no \
             --already_average_montage yes \
             --allow_missing_channels no \
+            --max_length_hour no \
+            --leave_one_hemisphere_out no \
+            --polarity 1 \
             --eval_sub_dir test_data/MoE_event/mat \
             --eval_results_dir test_data/MoE_events/results/pred_BS_1sStep \
-            --prediction_slipping_step_second 1 \
-            # --rewrite_results yes
-            # --polarity -1
+            --prediction_slipping_step_second 1
 
 
 # 6. NORMAL--------------------------------------------------------
@@ -152,15 +163,16 @@ echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distribute
             --already_format_channel_order no \
             --already_average_montage no \
             --allow_missing_channels no \
+            --max_length_hour no \
+            --polarity 1 \
+            --leave_one_hemisphere_out no \
             --eval_sub_dir test_data/Sandor/EDF \
             --eval_results_dir test_data/Sandor/results/pred_NORMAL_1sStep \
-            --prediction_slipping_step_second 1 \
-            # --rewrite_results yes
-            # --polarity -1
+            --prediction_slipping_step_second 1
 
 
 # 7. SLEEP 3 stages with 19 channels --------------------------------------------------------
-echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=12346 finetune_classification.py \
+echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
             --predict \
             --model base_patch200_200 \
             --task_model checkpoints/SLEEP.pth \
@@ -171,15 +183,16 @@ echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.r
             --already_format_channel_order no \
             --already_average_montage yes \
             --allow_missing_channels no \
+            --max_length_hour no \
+            --polarity 1 \
+            --leave_one_hemisphere_out no \
             --eval_sub_dir test_data/MoE_event/mat \
             --eval_results_dir test_data/MoE_event/results/pred_SLEEP3Stages_1sStep \
-            --prediction_slipping_step_second 1 \
-            # --rewrite_results yes
-            # --polarity -1
+            --prediction_slipping_step_second 1
 
 
 # 8. SLEEP 5 stages with 6 channels --------------------------------------------------------
-echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=12346 finetune_classification.py \
+echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
             --predict \
             --model base_patch200_200 \
             --task_model checkpoints/SLEEPPSG.pth \
@@ -190,11 +203,12 @@ echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.r
             --already_format_channel_order no \
             --already_average_montage yes \
             --allow_missing_channels no \
+            --max_length_hour no \
+            --polarity 1 \
+            --leave_one_hemisphere_out no \
             --eval_sub_dir test_data/MoE_event/mat \
             --eval_results_dir test_data/MoE_event/results/pred_SLEEP5Stages_1sStep \
-            --prediction_slipping_step_second 1 \
-            # --rewrite_results yes
-            # --polarity -1
+            --prediction_slipping_step_second 1
 
 
 ######################################## IF USING CPU #######################################
@@ -210,6 +224,9 @@ echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) -m torch.distributed.r
 #            --already_format_channel_order no \
 #            --already_average_montage no \
 #            --allow_missing_channels no \
+#            --max_length_hour no \
+#            --leave_one_hemisphere_out no \
+#            --polarity 1 \
 #            --eval_sub_dir test_data/IIIC/segments_raw \
 #            --eval_results_dir test_data/IIIC/results/pred_1sStep \
 #            --prediction_slipping_step_second 1 \

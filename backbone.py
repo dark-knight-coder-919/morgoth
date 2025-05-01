@@ -3,12 +3,13 @@ from functools import partial
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from timm.models.layers import drop_path, to_2tuple, trunc_normal_
-from timm.models.registry import register_model
+from timm.layers import drop_path, to_2tuple, trunc_normal_
+from timm.models import register_model
 from einops import rearrange
-from timm.models.layers import trunc_normal_ as __call_trunc_normal_
+from timm.layers import trunc_normal_ as __call_trunc_normal_
 import numpy as np
-
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 def _cfg(url='', **kwargs):
     return {

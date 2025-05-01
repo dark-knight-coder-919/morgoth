@@ -13,8 +13,9 @@ set result_dir=test_data\Sandor\results
 set already_format_channel_order=no
 set already_average_montage=no
 set allow_missing_channels=no
+set leave_one_hemisphere_out=no
+set polarity=-1
 set rewrite_results=no
-set sampling_rate=-1
 
 REM Create results directory if it doesn't exist
 if not exist %result_dir% mkdir %result_dir%
@@ -34,7 +35,8 @@ python finetune_classification.py ^
     --already_format_channel_order %already_format_channel_order% ^
     --already_average_montage %already_average_montage% ^
     --allow_missing_channels %allow_missing_channels% ^
-    --sampling_rate %sampling_rate% ^
+    --leave_one_hemisphere_out %leave_one_hemisphere_out% ^
+    --polarity %polarity% ^
     --eval_sub_dir %dataset_dir% ^
     --eval_results_dir %result_dir%\pred_NORMAL_1sStep ^
     --prediction_slipping_step_second 1 ^
@@ -65,12 +67,13 @@ python finetune_classification.py ^
     --already_format_channel_order %already_format_channel_order% ^
     --already_average_montage %already_average_montage% ^
     --allow_missing_channels %allow_missing_channels% ^
-    --sampling_rate %sampling_rate% ^
+    --leave_one_hemisphere_out %leave_one_hemisphere_out% ^
+    --polarity %polarity% ^
     --eval_sub_dir %dataset_dir% ^
     --eval_results_dir %result_dir%\pred_SLOWING_1sStep ^
     --prediction_slipping_step_second 1 ^
     --device cpu ^
-    --distributed False^
+    --distributed False ^
     --rewrite_results %rewrite_results%
 
 REM Slowing: (2) EEG_level prediction - FOC_SLOWING
@@ -106,12 +109,13 @@ python finetune_classification.py ^
     --already_format_channel_order %already_format_channel_order% ^
     --already_average_montage %already_average_montage% ^
     --allow_missing_channels %allow_missing_channels% ^
-    --sampling_rate %sampling_rate% ^
+    --leave_one_hemisphere_out %leave_one_hemisphere_out% ^
+    --polarity %polarity% ^
     --eval_sub_dir %dataset_dir% ^
     --eval_results_dir %result_dir%\pred_BS_1sStep ^
     --prediction_slipping_step_second 1 ^
     --device cpu ^
-    --distributed False^
+    --distributed False ^
     --rewrite_results %rewrite_results%
 
 REM BS: (2) EEG_level prediction
@@ -137,12 +141,13 @@ python finetune_classification.py ^
     --already_format_channel_order %already_format_channel_order% ^
     --already_average_montage %already_average_montage% ^
     --allow_missing_channels %allow_missing_channels% ^
-    --sampling_rate %sampling_rate% ^
+    --leave_one_hemisphere_out %leave_one_hemisphere_out% ^
+    --polarity %polarity% ^
     --eval_sub_dir %dataset_dir% ^
     --eval_results_dir %result_dir%\pred_FOCGENSPIKES_1sStep ^
     --prediction_slipping_step_second 1 ^
     --device cpu ^
-    --distributed False^
+    --distributed False ^
     --rewrite_results %rewrite_results%
 
 REM FOC GEN SPIKES: (2) EEG_level prediction - FOC_SPIKES
@@ -178,12 +183,13 @@ python finetune_classification.py ^
     --already_format_channel_order %already_format_channel_order% ^
     --already_average_montage %already_average_montage% ^
     --allow_missing_channels %allow_missing_channels% ^
-    --sampling_rate %sampling_rate% ^
+    --leave_one_hemisphere_out %leave_one_hemisphere_out% ^
+    --polarity %polarity% ^
     --eval_sub_dir %dataset_dir% ^
     --eval_results_dir %result_dir%\pred_SPIKES_1sStep ^
     --prediction_slipping_step_second 1 ^
     --device cpu ^
-    --distributed False^
+    --distributed False ^
     --rewrite_results %rewrite_results%
 
 REM Spike: (2) EEG_level prediction
@@ -210,12 +216,13 @@ python finetune_classification.py ^
     --already_format_channel_order %already_format_channel_order% ^
     --already_average_montage %already_average_montage% ^
     --allow_missing_channels %allow_missing_channels% ^
-    --sampling_rate %sampling_rate% ^
+    --leave_one_hemisphere_out %leave_one_hemisphere_out% ^
+    --polarity %polarity% ^
     --eval_sub_dir %dataset_dir% ^
     --eval_results_dir %result_dir%\pred_IIIC_1sStep ^
     --prediction_slipping_step_second 1 ^
     --device cpu ^
-    --distributed False^
+    --distributed False ^
     --rewrite_results %rewrite_results%
 
 REM IIIC: (2) EEG_level prediction - SEIZURE
@@ -281,12 +288,13 @@ python finetune_classification.py ^
     --already_format_channel_order %already_format_channel_order% ^
     --already_average_montage %already_average_montage% ^
     --allow_missing_channels %allow_missing_channels% ^
-    --sampling_rate %sampling_rate% ^
+    --leave_one_hemisphere_out %leave_one_hemisphere_out% ^
+    --polarity %polarity% ^
     --eval_sub_dir %dataset_dir% ^
     --eval_results_dir %result_dir%\pred_SLEEPPSG_1sStep ^
     --prediction_slipping_step_second 1 ^
     --device cpu ^
-    --distributed False^
+    --distributed False ^
     --rewrite_results %rewrite_results%
 
 REM Sleep 5 stage: (2) EEG_level prediction
@@ -311,12 +319,13 @@ python finetune_classification.py ^
     --already_format_channel_order %already_format_channel_order% ^
     --already_average_montage %already_average_montage% ^
     --allow_missing_channels %allow_missing_channels% ^
-    --sampling_rate %sampling_rate% ^
+    --leave_one_hemisphere_out %leave_one_hemisphere_out% ^
+    --polarity %polarity% ^
     --eval_sub_dir %dataset_dir% ^
     --eval_results_dir %result_dir%\pred_SLEEP3stages_1sStep ^
     --prediction_slipping_step_second 1 ^
     --device cpu ^
-    --distributed False^
+    --distributed False ^
     --rewrite_results %rewrite_results%
 
 REM Sleep 3 stage: (2) EEG_level prediction

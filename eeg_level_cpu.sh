@@ -2,17 +2,17 @@
 
 password="exxact@1"
 
- Sandor-100 case
+# Sandor-100 case
 dataset_dir="test_data/Sandor/EDF"
 data_format="edf"
 sampling_rate=0
-result_dir="test_data/Sandor/EDF_results"
+result_dir="test_data/Sandor/results"
 already_format_channel_order='no'
 already_average_montage='no'
 allow_missing_channels='no'
+leave_one_hemisphere_out='no'
+polarity=-1  # Sandor EEG EDF file has a polarity flip.
 rewrite_results='no'
-polarity=-1
-
 
 #  Normal:
      # (1). Continuous 1-second step event-level prediction
@@ -28,6 +28,7 @@ echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) finetune_classificatio
             --already_format_channel_order ${already_format_channel_order} \
             --already_average_montage ${already_average_montage} \
             --allow_missing_channels ${allow_missing_channels} \
+            --leave_one_hemisphere_out ${leave_one_hemisphere_out} \
             --polarity ${polarity} \
             --eval_sub_dir ${dataset_dir} \
             --eval_results_dir ${result_dir}/pred_NORMAL_1sStep \
@@ -35,8 +36,6 @@ echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) finetune_classificatio
             --device cpu \
             --distributed False \
             --rewrite_results ${rewrite_results}
-
-
 
     # (2). EEG_level prediction
 echo "$password" | sudo -S  $(which python) EEG_level_head.py \
@@ -61,6 +60,7 @@ echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) finetune_classificatio
             --already_format_channel_order ${already_format_channel_order}  \
             --already_average_montage ${already_average_montage} \
             --allow_missing_channels ${allow_missing_channels} \
+            --leave_one_hemisphere_out ${leave_one_hemisphere_out} \
             --polarity ${polarity} \
             --eval_sub_dir ${dataset_dir} \
             --eval_results_dir ${result_dir}/pred_SLOWING_1sStep \
@@ -94,6 +94,7 @@ echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) finetune_classificatio
             --already_format_channel_order ${already_format_channel_order} \
             --already_average_montage ${already_average_montage} \
             --allow_missing_channels ${allow_missing_channels} \
+            --leave_one_hemisphere_out ${leave_one_hemisphere_out} \
             --polarity ${polarity} \
             --eval_sub_dir ${dataset_dir} \
             --eval_results_dir ${result_dir}/pred_BS_1sStep \
@@ -126,6 +127,7 @@ echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) finetune_classificatio
             --already_format_channel_order ${already_format_channel_order} \
             --already_average_montage ${already_average_montage} \
             --allow_missing_channels ${allow_missing_channels} \
+            --leave_one_hemisphere_out ${leave_one_hemisphere_out} \
             --polarity ${polarity} \
             --eval_sub_dir ${dataset_dir} \
             --eval_results_dir  ${result_dir}/pred_FOCGENSPIKES_1sStep \
@@ -160,6 +162,7 @@ echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) finetune_classificatio
             --already_format_channel_order ${already_format_channel_order} \
             --already_average_montage ${already_average_montage} \
             --allow_missing_channels ${allow_missing_channels} \
+            --leave_one_hemisphere_out ${leave_one_hemisphere_out} \
             --polarity ${polarity} \
             --eval_sub_dir ${dataset_dir} \
             --eval_results_dir ${result_dir}/pred_SPIKES_1sStep \
@@ -192,6 +195,7 @@ echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) finetune_classificatio
             --already_format_channel_order ${already_format_channel_order} \
             --already_average_montage ${already_average_montage} \
             --allow_missing_channels ${allow_missing_channels} \
+            --leave_one_hemisphere_out ${leave_one_hemisphere_out} \
             --polarity ${polarity} \
             --eval_sub_dir ${dataset_dir} \
             --eval_results_dir ${result_dir}/pred_IIIC_1sStep \
@@ -226,6 +230,7 @@ echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) finetune_classificatio
             --already_format_channel_order ${already_format_channel_order} \
             --already_average_montage ${already_average_montage} \
             --allow_missing_channels ${allow_missing_channels} \
+            --leave_one_hemisphere_out ${leave_one_hemisphere_out} \
             --polarity ${polarity} \
             --eval_sub_dir ${dataset_dir} \
             --eval_results_dir ${result_dir}/pred_SLEEPPSG_1sStep \
@@ -254,6 +259,7 @@ echo "$password" | sudo OMP_NUM_THREADS=1 $(which python) finetune_classificatio
             --already_format_channel_order ${already_format_channel_order} \
             --already_average_montage ${already_average_montage} \
             --allow_missing_channels ${allow_missing_channels} \
+            --leave_one_hemisphere_out ${leave_one_hemisphere_out} \
             --polarity ${polarity} \
             --eval_sub_dir ${dataset_dir} \
             --eval_results_dir ${result_dir}/pred_SLEEP3stages_1sStep \

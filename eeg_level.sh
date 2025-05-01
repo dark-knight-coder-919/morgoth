@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Steps:
-#   First, perform continuous 1-second step event-level prediction;
+#   First, perform continuous 1-second step event-level prediction (refer to continuous_event_level.sh for the full parameter configuration.);
 #   Second, perform EEG_level prediction based on outputs from first step
 
 # The event-level output results (--eval_results_dir) are the EEG_level inputs (--test_csv_dir)
@@ -15,29 +15,29 @@
 password="exxact@1"
 
 # Sandor-100 case
-#dataset_dir="test_data/Sandor/EDF"
-#data_format="edf"
-#sampling_rate=0
-#result_dir="test_data/Sandor/EDF_results"
-#already_format_channel_order='no'
-#already_average_montage='no'
-#allow_missing_channels='no'
-#rewrite_results='no'
-#polarity=-1
-
-
-dataset_dir="test_data/Sandor/MAT"
-data_format="mat"
+dataset_dir="test_data/Sandor/EDF"
+data_format="edf"
 sampling_rate=0
-result_dir="test_data/Sandor/MAT_results"
+result_dir="test_data/Sandor/EDF_results"
 already_format_channel_order='no'
 already_average_montage='no'
 allow_missing_channels='no'
+leave_one_hemisphere_out='no'
+polarity=-1  # Sandor EEG EDF file has a polarity flip.
 rewrite_results='no'
-polarity=1
 
+#dataset_dir="test_data/Sandor/MAT"
+#data_format="mat"
+#sampling_rate=0
+#result_dir="test_data/Sandor/MAT_results"
+#already_format_channel_order='no'
+#already_average_montage='no'
+#allow_missing_channels='no'
+#leave_one_hemisphere_out='no'
+#polarity=1
+#rewrite_results='no'
 
-## MoE raw case
+# MoE raw case
 #dataset_dir="test_data/MoE_raw/mat"
 #data_format="mat"
 #sampling_rate=0
@@ -45,19 +45,9 @@ polarity=1
 #already_format_channel_order='no'
 #already_average_montage='no'
 #allow_missing_channels='no'
-#rewrite_results='no'
+#leave_one_hemisphere_out='no'
 #polarity=1
-
-## TELE EEG case
-#dataset_dir="test_data/teleEEG/EDF"
-#data_format="edf"
-#sampling_rate=0
-#result_dir="test_data/teleEEG/results"
-#already_format_channel_order='no'
-#already_average_montage='no'
-#allow_missing_channels='yes'
 #rewrite_results='no'
-#polarity=1
 
 
 #  Normal:
@@ -73,6 +63,7 @@ echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distribute
             --already_format_channel_order ${already_format_channel_order} \
             --already_average_montage ${already_average_montage} \
             --allow_missing_channels ${allow_missing_channels} \
+            --leave_one_hemisphere_out ${leave_one_hemisphere_out} \
             --polarity ${polarity} \
             --eval_sub_dir ${dataset_dir} \
             --eval_results_dir ${result_dir}/pred_NORMAL_1sStep \
@@ -90,7 +81,7 @@ echo "$password" | sudo -S  $(which python) EEG_level_head.py \
 
 #  Slowing:
     # (1). Continuous 1-second step event-level prediction
-echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=2 finetune_classification.py \
+echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
             --predict \
             --model base_patch200_200 \
             --task_model checkpoints/SLOWING.pth \
@@ -101,6 +92,7 @@ echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distribute
             --already_format_channel_order ${already_format_channel_order}  \
             --already_average_montage ${already_average_montage} \
             --allow_missing_channels ${allow_missing_channels} \
+            --leave_one_hemisphere_out ${leave_one_hemisphere_out} \
             --polarity ${polarity} \
             --eval_sub_dir ${dataset_dir} \
             --eval_results_dir ${result_dir}/pred_SLOWING_1sStep \
@@ -122,7 +114,7 @@ done
 
 # BS
   # (1). Continuous 1-second step event-level prediction
-echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=2 finetune_classification.py \
+echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
             --predict \
             --model base_patch200_200 \
             --task_model checkpoints/BS.pth \
@@ -133,6 +125,7 @@ echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distribute
             --already_format_channel_order ${already_format_channel_order} \
             --already_average_montage ${already_average_montage} \
             --allow_missing_channels ${allow_missing_channels} \
+            --leave_one_hemisphere_out ${leave_one_hemisphere_out} \
             --polarity ${polarity} \
             --eval_sub_dir ${dataset_dir} \
             --eval_results_dir ${result_dir}/pred_BS_1sStep \
@@ -152,7 +145,7 @@ echo "$password" | sudo -S  $(which python) EEG_level_head.py \
 
 # FOC GEN SPIKES:
     # (1). Continuous 1-second step event-level prediction
-echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=3 finetune_classification.py \
+echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
             --predict \
             --model base_patch200_200 \
             --task_model checkpoints/FOCGENSPIKES.pth \
@@ -163,6 +156,7 @@ echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distribute
             --already_format_channel_order ${already_format_channel_order} \
             --already_average_montage ${already_average_montage} \
             --allow_missing_channels ${allow_missing_channels} \
+            --leave_one_hemisphere_out ${leave_one_hemisphere_out} \
             --polarity ${polarity} \
             --eval_sub_dir ${dataset_dir} \
             --eval_results_dir  ${result_dir}/pred_FOCGENSPIKES_1sStep \
@@ -183,7 +177,7 @@ done
 
 # Spike
   # (1). Continuous 1-second step event-level prediction
-echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=2 finetune_classification.py \
+echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
             --predict \
             --model base_patch200_200 \
             --task_model checkpoints/SPIKES.pth \
@@ -194,6 +188,7 @@ echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distribute
             --already_format_channel_order ${already_format_channel_order} \
             --already_average_montage ${already_average_montage} \
             --allow_missing_channels ${allow_missing_channels} \
+            --leave_one_hemisphere_out ${leave_one_hemisphere_out} \
             --polarity ${polarity} \
             --eval_sub_dir ${dataset_dir} \
             --eval_results_dir ${result_dir}/pred_SPIKES_1sStep \
@@ -212,7 +207,7 @@ echo "$password" | sudo -S  $(which python) EEG_level_head.py \
 
 # IIIC
     # (1). Continuous 1-second step event-level prediction
-echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=4 finetune_classification.py \
+echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
             --predict \
             --model base_patch200_200 \
             --task_model checkpoints/IIIC.pth \
@@ -223,6 +218,7 @@ echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distribute
             --already_format_channel_order ${already_format_channel_order} \
             --already_average_montage ${already_average_montage} \
             --allow_missing_channels ${allow_missing_channels} \
+            --leave_one_hemisphere_out ${leave_one_hemisphere_out} \
             --polarity ${polarity} \
             --eval_sub_dir ${dataset_dir} \
             --eval_results_dir ${result_dir}/pred_IIIC_1sStep \
@@ -245,7 +241,7 @@ done
 
 # Sleep 5 stage
     # (1). Continuous 1-second step event-level prediction
-echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=4 finetune_classification.py \
+echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
             --predict \
             --model base_patch200_200 \
             --task_model checkpoints/SLEEPPSG.pth \
@@ -272,7 +268,7 @@ echo password | sudo -S $(which python)  EEG_level_head.py \
 
 # Sleep 3 stage
     # (1). Continuous 1-second step event-level prediction
-echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=4 finetune_classification.py \
+echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
             --predict \
             --model base_patch200_200 \
             --task_model checkpoints/SLEEP.pth \

@@ -3,15 +3,17 @@
 
 In Morgoth_20250401/
 
-	conda create -n test python=3.12
+	conda create -n morgoth python=3.12 # conda create -n morgoth python=3.11
 
-	conda activate test
+	conda activate morgoth
 
 If you have GPU with cuda driver, run
 
-	pip install -r requirements.txt
+	pip install -r requirements.txt # pip install -r requirements_cuda122.txt
 
 	conda install pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia
+
+	# conda install pytorch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 pytorch-cuda=12.1 -c pytorch -c nvidia
 
 Else windows:
 

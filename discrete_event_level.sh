@@ -32,7 +32,7 @@ echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distribute
 
 
 # 2. Seizure+IIIC
-echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=2 finetune_classification.py \
+echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
             --abs_pos_emb \
             --eval \
             --model base_patch200_200 \
@@ -45,7 +45,7 @@ echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distribute
 
 
 # 3. Focal Generalized Slowing
-#echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=3 finetune_classification.py \
+#echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
 #            --abs_pos_emb \
 #            --eval \
 #            --model base_patch200_200 \
@@ -56,9 +56,8 @@ echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distribute
 #            --eval_sub_dir test_data/SLOWING/processed_10second
 
 
-
-# 4. Focal Generalized Spikes
-#echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=4 finetune_classification.py \
+## 4. Focal Generalized Spikes
+#echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
 #            --abs_pos_emb \
 #            --eval \
 #            --model base_patch200_200 \
@@ -67,11 +66,11 @@ echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distribute
 #            --nb_classes 3 \
 #            --test_data_format mat \
 #            --eval_sub_dir test_data/FOC_GEN_SPIKES/processed_10second
-
-
-
-# 5. Burst Suppression
-#echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=5 finetune_classification.py \
+#
+#
+#
+## 5. Burst Suppression
+#echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port= finetune_classification.py \
 #            --abs_pos_emb \
 #            --eval \
 #            --model base_patch200_200 \
@@ -80,11 +79,11 @@ echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distribute
 #            --nb_classes 1 \
 #            --test_data_format mat \
 #            --eval_sub_dir test_data/BS/processed_10second
-
-
-
-# 6. Normal
-#echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=6 finetune_classification.py \
+#
+#
+#
+## 6. Normal
+#echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
 #            --abs_pos_emb \
 #            --eval \
 #            --model base_patch200_200 \
@@ -93,11 +92,11 @@ echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distribute
 #            --nb_classes 1 \
 #            --test_data_format mat \
 #            --eval_sub_dir test_data/NORMAL/processed_10second
-
-
-
-# 7. Sleep staging (5 stages; input 6 EEG channels)
-#echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=7 finetune_classification.py \
+#
+#
+#
+## 7. Sleep staging (5 stages; input 6 EEG channels)
+#echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
 #            --abs_pos_emb \
 #            --eval \
 #            --model base_patch200_200 \
@@ -106,11 +105,11 @@ echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distribute
 #            --nb_classes 5 \
 #            --test_data_format mat \
 #            --eval_sub_dir test_data/SLEEPPSG/processed_10second
-
-
-
-# 8. Sleep staging (3 stages; input 19 EEG channels)
-#echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=8 finetune_classification.py \
+#
+#
+#
+## 8. Sleep staging (3 stages; input 19 EEG channels)
+#echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
 #            --abs_pos_emb \
 #            --eval \
 #            --model base_patch200_200 \
@@ -119,5 +118,5 @@ echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distribute
 #            --nb_classes 3 \
 #            --test_data_format mat \
 #            --eval_sub_dir test_data/MGBSLEEP3stages/processed_10second
-
-
+#
+#
