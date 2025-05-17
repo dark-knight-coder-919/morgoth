@@ -66,6 +66,20 @@ pip install -r requirements_windows.txt
 
 ## 🚀 Usage
 
+### BEFORE START
+
+The model supports raw EEG data in both EDF and MAT formats as input.
+
+This means you can use unaltered clinical recordings directly — no manual preprocessing is required. The model automatically performs all necessary preprocessing steps, including: Bandpass filtering, Resampling, Montage, Clipping, Normalization,Epoching.
+
+⚠️ To enable this pipeline, users must either:
+	•	Ensure the raw EEG file contains sampling rate and channel names, or
+	•	Provide this information explicitly via command-line arguments, or 
+  •	Channel order must follow the standard as specified in the corresponding bash scripts. 
+Please refer to the continuous_event_level.sh, discrete_event_level.sh, or EEG_level.sh for example configurations and expected input parameters.
+
+This design ensures a streamlined and reproducible workflow, allowing you to run the model on raw EEG files directly, without requiring prior signal processing expertise.
+
 ### 1. Run continuous prediction on event level
 
 See the comments at the beginning of the Bash file to understand the meaning of each parameter in the command. You can modify parameters inside each script.
