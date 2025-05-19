@@ -11,8 +11,6 @@ from pathlib import Path
 import argparse
 import torch
 import mne
-from attr.validators import max_len
-from mne import create_info
 mne.set_log_level("ERROR")
 import re
 import torch.distributed as dist
