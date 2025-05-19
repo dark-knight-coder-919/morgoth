@@ -159,6 +159,15 @@ You may modify the script or config file to set the number of epochs, learning r
 Make sure you have sufficient GPU memory for large models or long EEG recordings.
 
 
+## 🔧 Errors and Solutions
+
+### NumPy and Pandas Binary Incompatibility
+
+Reinstall NumPy using Conda with the command:
+
+```bash
+conda install numpy=1.26.4
+```
 
 
 ## 📬 Contact
