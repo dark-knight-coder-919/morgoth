@@ -321,11 +321,9 @@ class CNNTransformerClassifier(nn.Module):
             padding_mask = self.create_padding_mask(lengths, x.size(1))
             padding_mask = padding_mask.to(x.device)
 
-            # 尝试最基本的调用方式
             try:
                 x = self.transformer(x, src_key_padding_mask=padding_mask)
             except TypeError:
-                # 如果上面的调用失败，尝试另一种常见参数形式
                 x = self.transformer(x, mask=None, src_key_padding_mask=padding_mask)
         else:
             x = self.transformer(x)
@@ -336,6 +334,13 @@ class CNNTransformerClassifier(nn.Module):
         # Sequence pooling
         if lengths is not None:
             indices = (lengths - 1).view(-1, 1, 1).expand(-1, 1, x.size(-1))
+            
+            # check the valid of index
+            if indices.max() >= x.size(1) or indices.min() < 0:
+                # print(
+                #     f"Warning：index out of bound！indices range [{indices.min()}, {indices.max()}]，but x.size(1)={x.size(1)}")
+                indices = torch.clamp(indices, 0, x.size(1) - 1)
+                
             x = x.gather(1, indices).squeeze(1)
         else:
             x = x[:, -1, :]
