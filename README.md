@@ -174,3 +174,17 @@ conda install numpy=1.26.4
 
 For questions, please contact:  
 Chenxi Sun – csun8@bidmc.harvard.edu
+
+
+## 🚨 Update 
+
+### 2025-06-08
+
+Add layer clip for cuda index out of boundary in EEG_level_head.sh, class CNNTransformerClassifier, def forward
+
+```bash
+# check the valid of index
+if indices.max() >= x.size(1) or indices.min() < 0:
+    indices = torch.clamp(indices, 0, x.size(1) - 1)
+```
+
