@@ -66,7 +66,7 @@ pip install -r requirements_windows.txt
 
 ## 🚀 Usage
 
-### Before SStart
+### Before Start
 
 The model supports raw EEG data in both EDF and MAT formats as input.
 
