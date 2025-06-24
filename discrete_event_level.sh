@@ -16,23 +16,34 @@
 # nb_classes: SPIKES/NORMAL/BS 1; IIIC 6; SLOWING/FOC_GEN_SPIKES/MGBSLEEP3stages 3; SLEEPPSG 5
 # Output results will be saved in pred.csv in eval_sub_dir folder
 
-password="exxact@1"
-
-# 1. Spikes
-echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
-            --abs_pos_emb \
-            --eval \
-            --model base_patch200_200 \
-            --task_model checkpoints/SPIKES.pth \
-            --dataset SPIKES \
-            --nb_classes 1 \
-            --test_data_format mat \
-            --eval_sub_dir test_data/SPIKES/processed_1second
-
-
+#password="exxact@1"
+#
+## 1. Spikes
+#echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
+#            --abs_pos_emb \
+#            --eval \
+#            --model base_patch200_200 \
+#            --task_model checkpoints/SPIKES.pth \
+#            --dataset SPIKES \
+#            --nb_classes 1 \
+#            --test_data_format mat \
+#            --eval_sub_dir test_data/SPIKES/processed_1second
+#
+#
+#
+## 2. Seizure+IIIC
+#echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
+#            --abs_pos_emb \
+#            --eval \
+#            --model base_patch200_200 \
+#            --task_model checkpoints/IIIC.pth \
+#            --dataset IIIC \
+#            --nb_classes 6 \
+#            --test_data_format mat \
+#            --eval_sub_dir test_data/IIIC/processed_10second
 
 # 2. Seizure+IIIC
-echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
+python finetune_classification.py \
             --abs_pos_emb \
             --eval \
             --model base_patch200_200 \
@@ -41,8 +52,6 @@ echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distribute
             --nb_classes 6 \
             --test_data_format mat \
             --eval_sub_dir test_data/IIIC/processed_10second
-
-
 
 # 3. Focal Generalized Slowing
 #echo "$password" | sudo -S OMP_NUM_THREADS=1 $(which python) -m torch.distributed.run --nnodes=1 --nproc_per_node=2 --master_port=1 finetune_classification.py \
