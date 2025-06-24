@@ -10,6 +10,8 @@ import pandas as pd
 from pathlib import Path
 import torch.distributed as dist
 from sklearn.tests.test_multiclass import n_classes
+import deepspeed
+from deepspeed import DeepSpeedConfig
 from tqdm import tqdm
 from collections import OrderedDict
 from timm.data.mixup import Mixup
@@ -262,8 +264,6 @@ def get_args():
     if known_args.enable_deepspeed:
         try:
             print("Use deepspeed==0.4.0'")
-            import deepspeed
-            from deepspeed import DeepSpeedConfig
             parser = deepspeed.add_config_arguments(parser)
             ds_init = deepspeed.initialize
         except:

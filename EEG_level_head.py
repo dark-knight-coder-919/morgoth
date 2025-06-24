@@ -1177,10 +1177,15 @@ def load_model(args):
 
 
 
-def load_model_parameters(model,model_parameters_path):
-    model.load_state_dict(torch.load(model_parameters_path,weights_only=True)['model_state_dict'])
-    return model
+# def load_model_parameters(model,model_parameters_path):
+#     model.load_state_dict(torch.load(model_parameters_path,weights_only=False)['model_state_dict'])
+#     return model
 
+def load_model_parameters(model, model_parameters_path, args):
+    device = args.device if hasattr(args, 'device') else 'cpu'
+    state_dict = torch.load(model_parameters_path, map_location=device)
+    model.load_state_dict(state_dict['model_state_dict'])
+    return model
 
 
 def summarize_sleep_eeg_level_results(dataset_type,train_csv_dirs,result_dir,event_step=1):
@@ -1470,13 +1475,25 @@ def get_dataset_info(dataset_name):
 
 
 def main():
-    args = get_args()
-    if args.device == 'cpu':
-        args.device=torch.device("cpu")
-    else:
-        args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # args = get_args()
+    # if args.device == 'cpu':
+    #     args.device=torch.device("cpu")
+    # else:
+    #     args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    #
+    # args.class_idx, args.n_classes, args.input_dim, event_precision,method = get_dataset_info(args.dataset)
 
-    args.class_idx, args.n_classes, args.input_dim, event_precision,method = get_dataset_info(args.dataset)
+    args = get_args()
+
+    # Determine device
+    if args.device == 'cpu':
+        args.device = torch.device("cpu")
+    elif torch.backends.mps.is_available():
+        args.device = torch.device("mps")
+    else:
+        args.device = torch.device("cpu")
+
+    args.class_idx, args.n_classes, args.input_dim, event_precision, method = get_dataset_info(args.dataset)
 
     if args.mode == 'train':
 
@@ -1564,7 +1581,9 @@ def main():
 
             model = load_model(args)
 
-            model=load_model_parameters(model,model_parameters_path=args.task_model)
+            # model=load_model_parameters(model,model_parameters_path=args.task_model)
+            model = load_model_parameters(model, model_parameters_path=args.task_model, args=args)
+            model = model.to(args.device)
 
             test_loader = DataLoader(predict_dataset, batch_size=args.batch_size, shuffle=False,collate_fn=collate_fn)
 
