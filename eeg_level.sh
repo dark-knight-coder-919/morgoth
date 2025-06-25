@@ -238,8 +238,6 @@
 #
 #done
 
-#!/bin/bash
-
 # Exit on error
 set -e
 
@@ -247,8 +245,8 @@ set -e
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Set environment variables with absolute paths
-dataset_dir="${SCRIPT_DIR}/test_data/IIIC"
-result_dir="${SCRIPT_DIR}/test_data/IIIC/results"
+dataset_dir="${SCRIPT_DIR}/test_data/Ecmo_512"
+result_dir="${SCRIPT_DIR}/test_data/Ecmo_512/results"
 pred_dir="${result_dir}/pred_1sStep"
 
 # Create necessary directories
@@ -265,7 +263,7 @@ if [ ! -d "${pred_dir}" ]; then
 fi
 
 echo "Directory structure:"
-ls -R "${SCRIPT_DIR}/test_data/IIIC"
+ls -R "${SCRIPT_DIR}/test_data/Ecmo_512"
 
 # Check if model files exist
 echo "Checking model files..."
@@ -276,12 +274,7 @@ for model in SEIZURE LPD GPD LRDA GRDA; do
 done
 
 # Determine device
-if python -c "import torch; print(torch.backends.mps.is_available())" | grep -q "True"; then
-    DEVICE="mps"
-else
-    DEVICE="cpu"
-fi
-
+DEVICE="cpu"
 echo "Using device: ${DEVICE}"
 
 # (2). EEG_level prediction (SEIZURE, LPD, GPD, LRDA, GRDA are separated)
