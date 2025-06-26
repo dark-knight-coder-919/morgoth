@@ -2183,13 +2183,13 @@ def resample_signal(signal, original_rate, target_rate, n_jobs=5):
 
 def get_frequency_from_mat(raw_mat):
     try:
-        fs_value = raw_mat['Fs']
+        fs_value = raw_mat['Fs'][0][0]
     except KeyError:
         try:
-            fs_value = raw_mat['fs']
+            fs_value = raw_mat['fs'][0][0]
         except KeyError:
             try:
-                fs_value = raw_mat['sampling_rate']
+                fs_value = raw_mat['sampling_rate'][0][0]
             except KeyError:
                     return 0
 
